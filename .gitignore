@@ -1,0 +1,8 @@
+*.sif
+data/*
+!data/README.md
+results/
+logs/
+slurm-*.out
+slurm-*.err
+.env
