@@ -1,0 +1,5 @@
+line_number	chembl_id	canonical_smiles	reason
+4	FIX0007	C1CC(	SMILES syntax error
+6	FIX0008	CC(C)(C)(C)C	Explicit valence for atom # 1 C, 5, is greater than permitted
+8	FIX0009	c1cccc1	Can't kekulize mol.  Unkekulized atoms: 0 1 2 3 4
+9	FIX0010		empty SMILES
