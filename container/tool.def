@@ -1,0 +1,82 @@
+# Apptainer definition file for the RDKit descriptor workload.
+#
+# Build (from the repository root, because the %files paths below are
+# relative to the folder you run the build from):
+#   apptainer build container/rdkit-descriptors.sif container/tool.def
+#
+# The conda environment is created from the lock file for the build
+# machine's CPU architecture, so it has exactly the same packages
+# (same files, same checksums) as `mamba create --file conda-linux-*.lock`.
+#
+# Run (bind the input folder read-only to /data, the output folder to /results):
+#   apptainer exec --cleanenv \
+#       --bind "$PWD/data:/data:ro" --bind "$PWD/results:/results" \
+#       container/rdkit-descriptors.sif \
+#       python /opt/app/scripts/compute_descriptors.py \
+#       --input /data/chembl_37_chemreps.txt.gz --chunk-size 1000 --chunk-index 0 \
+#       --output /results/descriptors_0000.tsv
+
+Bootstrap: docker
+# micromamba (a single-binary version of mamba) on Ubuntu 24.04.
+# Pinned by the digest of the multi-architecture image index, so the same
+# file builds on x86_64 (amd64) and aarch64 (arm64) machines and the base
+# image cannot change under the same tag.
+# This digest is tag 2.10.0-ubuntu24.04. Apptainer does not accept a tag and
+# a digest together ("Docker references with both a tag and digest are
+# currently not supported"), so only the digest is given.
+From: mambaorg/micromamba@sha256:c3897a06f87c1c13f038188b3665a8c4162da62eac5109ae6a939d1e290dcefa
+
+%files
+    conda-linux-64.lock /opt/app/locks/conda-linux-64.lock
+    conda-linux-aarch64.lock /opt/app/locks/conda-linux-aarch64.lock
+    scripts/compute_descriptors.py /opt/app/scripts/compute_descriptors.py
+    tests /opt/app/tests
+
+%post
+    set -eu
+    export MAMBA_ROOT_PREFIX=/opt/conda
+
+    case "$(uname -m)" in
+        x86_64)  lock=/opt/app/locks/conda-linux-64.lock ;;
+        aarch64) lock=/opt/app/locks/conda-linux-aarch64.lock ;;
+        *) echo "No lock file for architecture $(uname -m)" >&2; exit 1 ;;
+    esac
+    echo "Creating environment from $lock"
+    micromamba create --yes --prefix /opt/env --file "$lock"
+    # Remove downloaded package files; they are not needed at run time.
+    micromamba clean --all --yes
+
+    # The files copied in by %files may keep restrictive permissions from
+    # the host; make sure every user can read them.
+    chmod -R a+rX /opt/app
+
+%environment
+    export PATH=/opt/env/bin:$PATH
+    # Ignore Python packages in the user's ~/.local, which Apptainer
+    # mounts by default with $HOME. They could shadow the pinned packages.
+    export PYTHONNOUSERSITE=1
+
+%runscript
+    exec python /opt/app/scripts/compute_descriptors.py "$@"
+
+%test
+    # Runs at the end of the build (and with `apptainer test`).
+    # Fails the build if the environment or the workload is broken.
+    export PATH=/opt/env/bin:$PATH
+    export PYTHONNOUSERSITE=1
+    python -c "import rdkit; print('RDKit', rdkit.__version__)"
+    cd /opt/app
+    python -m unittest discover -s tests
+
+%labels
+    Description RDKit molecular descriptors for ChEMBL 37 chemreps
+    Base mambaorg/micromamba:2.10.0-ubuntu24.04
+    Python 3.13.18
+    RDKit 2026.09.2
+
+%help
+    Computes RDKit molecular descriptors for one chunk of a ChEMBL chemreps file.
+    Example:
+      apptainer run --cleanenv --bind "$PWD/data:/data:ro" --bind "$PWD/results:/results" \
+          rdkit-descriptors.sif --input /data/chembl_37_chemreps.txt.gz \
+          --chunk-size 1000 --chunk-index 0 --output /results/descriptors_0000.tsv
