@@ -1,0 +1,18 @@
+# Conda environment for computing RDKit molecular descriptors.
+#
+# This file lists only the packages we ask for directly, with exact versions.
+# The lock files (conda-linux-64.lock, conda-linux-aarch64.lock) pin every
+# package, including dependencies, to an exact file and checksum.
+# Build from a lock file when you need an identical environment:
+#   mamba create -n rdkit-descriptors --file conda-linux-64.lock      # x86_64
+#   mamba create -n rdkit-descriptors --file conda-linux-aarch64.lock # ARM64
+#
+# After editing this file, regenerate the lock files:
+#   conda-lock lock -f environment.yml -p linux-64 -p linux-aarch64 --kind explicit
+name: rdkit-descriptors
+channels:
+  - conda-forge
+  - nodefaults        # never fall back to Anaconda's "defaults" channel
+dependencies:
+  - python=3.13.18
+  - rdkit=2026.09.2
