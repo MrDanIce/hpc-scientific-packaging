@@ -7,3 +7,4 @@ slurm-*.out
 slurm-*.err
 .env
 __pycache__/
+slurm/sol/config.local.sh
