@@ -99,6 +99,24 @@ class TestWholeFile(TempDirTestCase):
             (FIXTURES / "expected_invalid.tsv").read_bytes(),
         )
 
+    def test_checksum_file_matches_expected_outputs(self):
+        """tests/fixtures/expected.sha256 (used by the CI smoke test) must
+        describe the same files as expected_descriptors.tsv and
+        expected_invalid.tsv."""
+        import hashlib
+
+        sums = {}
+        for line in (FIXTURES / "expected.sha256").read_text(encoding="utf-8").splitlines():
+            digest, name = line.split("  ", 1)
+            sums[name] = digest
+        for name, fixture in [
+            ("descriptors.tsv", "expected_descriptors.tsv"),
+            ("descriptors.invalid.tsv", "expected_invalid.tsv"),
+        ]:
+            with self.subTest(name=name):
+                actual = hashlib.sha256((FIXTURES / fixture).read_bytes()).hexdigest()
+                self.assertEqual(sums[name], actual)
+
     def test_known_values(self):
         """A few values that can be checked by hand."""
         out = self.tmp / "d.tsv"

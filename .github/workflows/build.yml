@@ -1,0 +1,109 @@
+# Build the Apptainer image on x86_64 and run a smoke test on every push.
+#
+# Steps:
+#   1. Install Apptainer 1.5.5 from the official release package (pinned by
+#      version and SHA-256).
+#   2. Build container/tool.def. The image's %test section runs the unit
+#      tests during the build, so a broken environment fails here.
+#   3. Run the 10-row test fixture inside the image, with the fixture
+#      folder bind-mounted read-only.
+#   4. Compare the output with tests/fixtures/expected.sha256. The expected
+#      checksums were produced on aarch64 (the VM), so this also checks
+#      that x86_64 gives byte-identical results.
+#   5. Keep the image as a workflow artifact (14 days).
+#
+# Third-party actions are pinned to a full commit hash (a tag can be moved
+# to a different commit; a commit hash cannot). The comment gives the tag.
+
+name: Build and smoke test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# The workflow only needs to read the repository.
+permissions:
+  contents: read
+
+# A newer push to the same branch cancels a run that is still going.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APPTAINER_VERSION: "1.5.5"
+  # From https://api.github.com/repos/apptainer/apptainer/releases/tags/v1.5.5
+  APPTAINER_DEB_SHA256: "25095d3711504b3e8657dbb2e172ef8db9db43c4503d940c9c36b105db8dce77"
+
+jobs:
+  build:
+    name: Build x86_64 image and smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Show runner
+        run: |
+          uname -m
+          nproc
+          free -m
+          df -h .
+
+      - name: Install Apptainer
+        run: |
+          deb="apptainer_${APPTAINER_VERSION}_amd64.deb"
+          curl -fsSL -o "$RUNNER_TEMP/$deb" \
+            "https://github.com/apptainer/apptainer/releases/download/v${APPTAINER_VERSION}/$deb"
+          echo "${APPTAINER_DEB_SHA256}  $RUNNER_TEMP/$deb" | sha256sum -c -
+          sudo apt-get update
+          sudo apt-get install -y "$RUNNER_TEMP/$deb"
+          apptainer --version
+
+      - name: Build image (runs the unit tests in %test)
+        run: apptainer build container/rdkit-descriptors.sif container/tool.def
+
+      - name: Show image
+        run: |
+          ls -l container/rdkit-descriptors.sif
+          apptainer inspect container/rdkit-descriptors.sif
+
+      - name: Run the test fixture in the container
+        run: |
+          mkdir -p smoke
+          apptainer exec --cleanenv \
+            --bind "$PWD/tests/fixtures:/data:ro" \
+            --bind "$PWD/smoke:/out" \
+            container/rdkit-descriptors.sif \
+            python /opt/app/scripts/compute_descriptors.py \
+              --input /data/sample_chemreps.tsv \
+              --output /out/descriptors.tsv
+
+      - name: Compare output with expected checksums
+        working-directory: smoke
+        run: |
+          sha256sum descriptors.tsv descriptors.invalid.tsv
+          sha256sum -c ../tests/fixtures/expected.sha256
+
+      - name: Upload smoke test output
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: smoke-test-output
+          path: smoke/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload image
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: rdkit-descriptors-x86_64-sif
+          path: container/rdkit-descriptors.sif
+          retention-days: 14
+          compression-level: 0   # the image is already compressed
+          if-no-files-found: error
