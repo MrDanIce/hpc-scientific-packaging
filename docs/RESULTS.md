@@ -1,7 +1,8 @@
 # Results
 
 Real measurements only. Every number says where it was measured.
-VM and ASU Sol results are kept in separate sections and never combined.
+VM, GitHub Actions and ASU Sol results are kept in separate sections and
+never combined.
 
 ## VM (single-node Slurm)
 
@@ -116,3 +117,26 @@ memory is higher than any single array task's.
 
 The script's own timer printed 320.8 s, slightly more than `/usr/bin/time`'s
 5:20.32; the numbers above are copied as reported.
+
+## GitHub Actions (ubuntu-24.04 runner, x86_64)
+
+Workflow `.github/workflows/build.yml`, run 44462201596, triggered by the
+push of commit `e7b6ba9` on 2026-11-19. Conclusion: success. Whole run
+05:00:56Z → 05:02:03Z (67 s, from GitHub's run timestamps).
+
+| Check | Result |
+|---|---|
+| Architecture | `uname -m`: x86_64 |
+| Apptainer | 1.5.5, official `.deb`; checksum `25095d37…` verified (`OK`) |
+| Lock file used in the build | `conda-linux-64.lock` (first real use of the x86_64 lock file) |
+| Tests inside the image (`%test`) | RDKit 2026.09.2, `Ran 23 tests`, `OK` |
+| Image size | 289,558,528 bytes (VM aarch64 image: 282,734,592 bytes) |
+| Fixture run | 10 rows read, 6 valid, 4 invalid |
+| `descriptors.tsv` SHA-256 | `b5f1ff3b…e4b6`: `OK` against `tests/fixtures/expected.sha256` |
+| `descriptors.invalid.tsv` SHA-256 | `91f651e7…7292`: `OK` |
+| Artifacts (kept until 2026-12-03) | `rdkit-descriptors-x86_64-sif` (289,558,684 bytes), `smoke-test-output` (863 bytes) |
+
+The expected checksums were produced on the VM (aarch64), so the fixture
+gives byte-identical output on aarch64 (VM) and x86_64 (GitHub Actions).
+This covers the 10-row fixture only; the 200,000-molecule subset has not
+been run on x86_64.
