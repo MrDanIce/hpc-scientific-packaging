@@ -7,6 +7,7 @@
 # ${DATA}. The last chunk may be shorter.
 #
 # Argument 1: folder for the chunk files (chunk_NNNN.tsv, chunk_NNNN.invalid.tsv)
+# Argument 2: chunk size (optional; default CHUNK_SIZE from config.sh)
 #
 # Submit with: bash slurm/sol/submit.sh one-task   (step 3b, a single task)
 #              bash slurm/sol/submit.sh full       (step 4, all chunks + merge)
@@ -28,7 +29,8 @@
 cd "${SLURM_SUBMIT_DIR}"
 source slurm/sol/common.sh
 
-OUTDIR=${1:?usage: array.sbatch <chunks folder>}
+OUTDIR=${1:?usage: array.sbatch <chunks folder> [chunk size]}
+CHUNK_SIZE=${2:-$CHUNK_SIZE}
 CHUNK_INDEX=${SLURM_ARRAY_TASK_ID:?must be submitted as a job array}
 
 job_header

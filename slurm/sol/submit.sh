@@ -5,8 +5,8 @@
 #
 #   bash slurm/sol/submit.sh fixture    step 2:  image + rebuilt env on the test fixture
 #   bash slurm/sol/submit.sh fetch      step 3a: download ChEMBL 37 on a compute node
-#   bash slurm/sol/submit.sh one-task   step 3b: a single array task (the last full chunk)
-#   bash slurm/sol/submit.sh full       step 4:  every chunk + merge (+ 200,000-row comparison merge)
+#   bash slurm/sol/submit.sh one-task   step 3b: one array task over the first TEST_CHUNK_SIZE rows
+#   bash slurm/sol/submit.sh full       step 4:  every chunk + merge
 #
 # All settings, including the account and resource requests, are in
 # slurm/sol/config.sh.
@@ -67,22 +67,25 @@ fetch)
 one-task)
     [[ -f "$SIF" ]]  || die "image not found: $SIF (step 1)"
     [[ -f "$DATA" ]] || die "data not found: $DATA (step 3a)"
-    # The last FULL chunk: it skips furthest into the compressed file, so it
-    # is the slowest full-size task.
-    task=$(( TOTAL_MOLECULES / CHUNK_SIZE - 1 ))
-    (( task >= 0 )) || die "CHUNK_SIZE is larger than the dataset"
-    id=$(submit --array="${task}%1" \
+    # One task over rows 0 .. TEST_CHUNK_SIZE-1. With 200,000 its output can
+    # be compared directly with the VM result for the same rows
+    # (SHA-256 5c792afc..., docs/RESULTS.md).
+    id=$(submit --array="0%1" \
                 --cpus-per-task="$ARRAY_CPUS" --mem="$ARRAY_MEM" --time="$ARRAY_TIME" \
                 --output="$LOGDIR/%x_%A_%a.out" \
-                slurm/sol/array.sbatch "$RESULTS/one_task/chunks")
-    echo "One-task test: array job $id, task $task ($CHUNK_SIZE molecules)"
-    echo "Log:   $LOGDIR/rdkit-sol-array_${id}_${task}.out"
+                slurm/sol/array.sbatch "$RESULTS/one_task/chunks" "$TEST_CHUNK_SIZE")
+    echo "One-task test: array job $id, task 0 ($TEST_CHUNK_SIZE molecules)"
+    echo "Log:   $LOGDIR/rdkit-sol-array_${id}_0.out"
     echo "After: sacct -j $id --format=$SACCT_FMT"
+    echo "       sha256sum $RESULTS/one_task/chunks/chunk_0000.tsv $RESULTS/one_task/chunks/chunk_0000.invalid.tsv"
     ;;
 full)
     [[ -f "$SIF" ]]  || die "image not found: $SIF (step 1)"
     [[ -f "$DATA" ]] || die "data not found: $DATA (step 3a)"
     out="$RESULTS/chembl37_full"
+    # Every array task counts as a job against the QoS submit limit.
+    (( N_CHUNKS + 1 <= MAX_SUBMIT_JOBS )) \
+        || die "$N_CHUNKS tasks + 1 merge is more than MAX_SUBMIT_JOBS ($MAX_SUBMIT_JOBS); raise CHUNK_SIZE"
     array_id=$(submit --array="0-$(( N_CHUNKS - 1 ))%${MAX_PARALLEL}" \
                       --cpus-per-task="$ARRAY_CPUS" --mem="$ARRAY_MEM" --time="$ARRAY_TIME" \
                       --output="$LOGDIR/%x_%A_%a.out" \
@@ -96,17 +99,6 @@ full)
     echo "Array job: $array_id ($N_CHUNKS tasks x $CHUNK_SIZE molecules, at most $MAX_PARALLEL at once)"
     echo "Merge job: $merge_id (runs only if all $N_CHUNKS tasks succeed)"
     ids="$array_id,$merge_id"
-    # The first 200,000 molecules can be compared with the VM result
-    # (SHA-256 5c792afc..., docs/RESULTS.md) if they are whole chunks.
-    if (( 200000 % CHUNK_SIZE == 0 && 200000 <= TOTAL_MOLECULES )); then
-        cmp_id=$(submit --dependency="afterok:${array_id}" --kill-on-invalid-dep=yes \
-                        --cpus-per-task=1 --mem=2G --time=00:15:00 \
-                        --output="$LOGDIR/%x_%j.out" --job-name=rdkit-sol-merge200k \
-                        slurm/sol/merge.sbatch "$(( 200000 / CHUNK_SIZE ))" "$out/chunks" \
-                        "$out/subset200k_descriptors.tsv")
-        echo "Comparison merge of the first 200,000 molecules: $cmp_id"
-        ids="$ids,$cmp_id"
-    fi
     echo "Watch: squeue -u \$USER"
     echo "After: sacct -j $ids --format=$SACCT_FMT"
     ;;

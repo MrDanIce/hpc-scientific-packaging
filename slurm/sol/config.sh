@@ -40,8 +40,14 @@ APPTAINER_MODULE=""
 
 # ---------------------------------------------------------------- workload
 TOTAL_MOLECULES=2897819   # data rows in chembl_37_chemreps.txt.gz (counted on the VM)
-CHUNK_SIZE=100000         # molecules per array task
-MAX_PARALLEL=10           # array tasks running at the same time (%N)
+# QoS "class" limits seen on Sol (2026-11-18, sacctmgr show qos):
+#   MaxWall 1-00:00:00, MaxJobsPU 2 (running at once), MaxSubmitPU 10 (in the queue).
+# Each array task counts as one job, so a full run must be at most
+# MAX_SUBMIT_JOBS jobs including the merge: 8 chunks + 1 merge = 9.
+CHUNK_SIZE=400000         # molecules per array task in the full run (8 chunks); to be confirmed from step 3b
+TEST_CHUNK_SIZE=200000    # step 3b: one task over rows 0-199,999, comparable with the VM result
+MAX_PARALLEL=2            # array tasks running at the same time (%N); QoS allows 2
+MAX_SUBMIT_JOBS=10        # QoS MaxSubmitPU
 
 # ---------------------------------------------------------------- requests
 # Starting values. ARRAY_* and MERGE_* are to be replaced with values based
