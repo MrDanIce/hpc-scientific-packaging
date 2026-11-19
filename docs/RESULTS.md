@@ -118,6 +118,26 @@ memory is higher than any single array task's.
 The script's own timer printed 320.8 s, slightly more than `/usr/bin/time`'s
 5:20.32; the numbers above are copied as reported.
 
+### Second run, from a clean clone, following the README (2026-11-18)
+
+Still the VM (single-node Slurm). Fresh `git clone` of commit `8334413`
+from GitHub into a new folder, with the new README.md and
+TROUBLESHOOTING.md copied in, then every README step in order. The conda
+environment was named `rdkit-descriptors-clean` so the existing one was
+not touched, and removed afterwards. Conda packages were already in the
+VM's package cache, so this did not test a fresh package download.
+
+| README step | Result |
+|---|---|
+| 2. Environment from `conda-linux-aarch64.lock` | Created in 5.3 s (packages cached); `Ran 23 tests`, `OK` |
+| 3. Download | 1 min 53 s; SHA-256 `ea6181ce…` |
+| 4. First 1,000 molecules | 1000 valid, 0 invalid, 2.2 s; SHA-256 `f20d37c61d3113e5cce4a2e3f517836ceb85b9503de042cf9ef7e5fa332e440b` (same as the Milestone 2 run and its rerun) |
+| 5. Image build | 1 min 13.6 s, `Ran 23 tests`, `OK`, `Build complete`; fixture `descriptors.tsv: OK`, `descriptors.invalid.tsv: OK` |
+| 6. Single job (job 35) | COMPLETED 0:0, 00:00:20, MaxRSS 111,520 KB |
+| 6. Array + merge (jobs 36, 37) | All 21 COMPLETED. First task start 22:15:16 → merge end 22:16:59 (103 s; the single job shared the CPUs at the start) |
+| 6. Merged output | `descriptors.tsv` `5c792afc…`, `descriptors.invalid.tsv` `91bcb991…`: **identical to the first run (jobs 6, 7)** |
+| 7. Module | `module avail`/`load`/`list`/`purge` worked from the new location; fixture SHA-256 `b5f1ff3b…` |
+
 ## GitHub Actions (ubuntu-24.04 runner, x86_64)
 
 Workflow `.github/workflows/build.yml`, run 44462201596, triggered by the

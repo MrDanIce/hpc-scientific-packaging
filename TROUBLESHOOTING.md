@@ -1,10 +1,19 @@
 # Troubleshooting
 
 Real errors hit while building this project, with their cause and fix.
-Each entry says where it happened:
+Every entry is an error that actually happened; the error text is copied
+exactly. Each entry says where it happened:
 
-- **VM (single-node Slurm):** Lima VM running Ubuntu 24.04 (aarch64) on a MacBook.
-- **ASU Sol:** the ASU Sol supercomputer.
+- **VM (single-node Slurm):** Lima VM running Ubuntu 24.04 (aarch64) on a
+  MacBook, with a single-node Slurm install (not a production cluster).
+- **GitHub Actions:** ubuntu-24.04 x86_64 runner. No errors so far.
+- **ASU Sol:** the ASU Sol supercomputer. Not run yet.
+
+Quick checks when something fails:
+
+- `ModuleNotFoundError` for `rdkit`: you are not using the environment's
+  Python. Run `which python`, and use `mamba run -n rdkit-descriptors ...`.
+- `sacct` shows a task `FAILED`: read its log, `logs/rdkit-array_<array ID>_<task>.out`.
 
 | Environment | Error (exact) | Cause | Fix |
 |---|---|---|---|

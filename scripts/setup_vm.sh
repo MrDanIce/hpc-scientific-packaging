@@ -81,7 +81,7 @@ if ! grep -rqs "apptainer/ppa" /etc/apt/sources.list.d/; then
 fi
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    curl openssl \
+    curl openssl time \
     munge \
     mariadb-server \
     slurm-wlm slurmdbd \
