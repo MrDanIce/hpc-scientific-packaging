@@ -21,7 +21,7 @@ release 37.
 |---|---|
 | VM (single-node Slurm) | Everything: environment, tests, container, Slurm jobs, module |
 | GitHub Actions (ubuntu-24.04, x86_64) | Container build, unit tests inside the image, smoke test on the test fixture |
-| ASU Sol supercomputer | Not run yet |
+| ASU Sol supercomputer | Image copied and checked; fixture job (container and rebuilt conda environment) passed. ChEMBL runs not done yet. See `docs/RESULTS.md` |
 
 ## What is in this repository
 

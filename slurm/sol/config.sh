@@ -15,7 +15,7 @@
 # Find yours with: sacctmgr -n -P show assoc user=$USER format=account,partition,qos
 # submit.sh refuses to submit while the account is still the placeholder.
 SOL_ACCOUNT="REPLACE_WITH_APPROVED_ACCOUNT"
-SOL_PARTITION="htc"
+SOL_PARTITION="public"   # QoS class jobs asked for htc ran on public (job 1991853)
 SOL_QOS="public"
 
 # ---------------------------------------------------------------- paths
@@ -54,7 +54,7 @@ MAX_SUBMIT_JOBS=10        # QoS MaxSubmitPU
 # on the sacct numbers from the one-task test (step 3). Every request must
 # stay under the 4-hour limit.
 FIXTURE_CPUS=2;  FIXTURE_MEM=4G;  FIXTURE_TIME=00:45:00
-FETCH_CPUS=1;    FETCH_MEM=1G;    FETCH_TIME=00:30:00
+FETCH_CPUS=1;    FETCH_MEM=2G;    FETCH_TIME=00:30:00   # Sol minimum is 2048 MB per CPU
 ARRAY_CPUS=1;    ARRAY_MEM=2G;    ARRAY_TIME=01:00:00
 # Merge of all 2.9 million rows has not been measured. The VM merge of
 # 200,000 rows peaked at 189,376 KB; scaled by 14.5x that is about 2.7 GB.

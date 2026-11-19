@@ -3,7 +3,7 @@
 Scripts for rerunning the workload on the ASU Sol supercomputer, using the
 x86_64 image built by GitHub Actions (images are not built on Sol).
 
-**Status:** prepared, not yet run on Sol. The scripts were rehearsed on the
+**Status:** steps 1 (image) and 2 (fixture) done on Sol on 2026-11-18; steps 3a–4 not run yet. The scripts were rehearsed on the
 VM (single-node Slurm) with a local override of the settings; that checked
 the scripts, not Sol. Sol results go in the "ASU Sol" section of
 `docs/RESULTS.md` only after they have really been produced there.
@@ -12,7 +12,7 @@ the scripts, not Sol. Sol results go in the "ASU Sol" section of
 
 | File | What it does |
 |---|---|
-| `config.sh` | All settings: account (placeholder), partition `htc`, QoS, paths under `/scratch/$USER/hpc-scientific-packaging`, chunk size, tasks at once, resource requests |
+| `config.sh` | All settings: account (placeholder), partition `public`, QoS, paths under `/scratch/$USER/hpc-scientific-packaging`, chunk size, tasks at once, resource requests |
 | `submit.sh` | The only way to submit. Adds `--account`, `--partition`, `--qos`, `--export=NONE` and the requests from `config.sh`. Refuses while the account is the placeholder or a time request is not under 4 hours |
 | `common.sh` | Shared start of every job script |
 | `fixture.sbatch` | Image tests and fixture in the container; conda environment rebuilt on the compute node with `module load mamba/latest`, its tests and the fixture. Both fixture outputs are checked against `tests/fixtures/expected.sha256` (the checksums from GitHub Actions and the VM) |
@@ -35,6 +35,7 @@ Read-only checks, run by hand on the login node:
 | Apptainer | `/usr/bin/apptainer`, `apptainer version 1.5.4-1.el8`; module `apptainer/1.4.5` also available |
 | mamba | module `mamba/latest` available |
 | Partition `htc` | `up`, time limit `4:00:00`, 212 nodes, 48+ CPUs, 513000+ MB |
+| Partition `public` (checked after step 2) | `up`, time limit `7-00:00:00`, 166 nodes, 48+ CPUs, 515454+ MB. Jobs submitted to `htc` with QoS `class` ran here (see `TROUBLESHOOTING.md`) |
 | `/usr/bin/time` | present |
 | Slurm associations | only a class account, QoS `class`; no association with QoS `public` |
 | QoS `class` limits | MaxWall `1-00:00:00`, **MaxJobsPU 2** (running at once), **MaxSubmitPU 10** (in the queue) |

@@ -160,3 +160,68 @@ The expected checksums were produced on the VM (aarch64), so the fixture
 gives byte-identical output on aarch64 (VM) and x86_64 (GitHub Actions).
 This covers the 10-row fixture only; the 200,000-molecule subset has not
 been run on x86_64.
+
+## ASU Sol
+
+ASU Sol supercomputer, x86_64, run from login node `sol-login01`. Jobs are
+submitted with `slurm/sol/submit.sh`. The account is a class account and is
+not written here. Commands were run by the project owner on Sol; the output
+was copied back by hand.
+
+### Step 1: image copied from the VM (2026-11-18)
+
+The GitHub Actions x86_64 image was copied from the VM to Sol with `scp`.
+
+| Where | Size (bytes) | SHA-256 |
+|---|---|---|
+| VM copy, before `scp` | 289,558,528 | `80ca8f94…f93f7dc` |
+| ASU Sol, `$WORK/images/rdkit-descriptors-x86_64.sif` | 289,558,528 | `80ca8f94…f93f7dc` |
+
+The size is the same as the image size in the GitHub Actions run above.
+
+### Step 2: fixture job (2026-11-18)
+
+`bash slurm/sol/submit.sh fixture`, job 1991853, node `sc007`, 2 CPUs,
+`--mem=4G`, QoS `class`. Requested partition `htc`: `sacct` SubmitLine shows
+`--partition=htc`, but `sacct` and the job log show partition `public`. Sol
+moved the job; `slurm/sol/config.sh` now asks for `public`.
+
+| Check | Result | Source |
+|---|---|---|
+| State | COMPLETED, exit code 0:0 | `sacct` |
+| Wall time, whole job | 00:02:39 (pending time not included) | `sacct` Elapsed |
+| Apptainer | 1.5.4-1.el8 (`/usr/bin/apptainer`, no module loaded) | job log |
+| Image checksum inside the job | `80ca8f94…f93f7dc` | job log |
+| A2. Tests inside the image | RDKit 2026.09.2, `Ran 23 tests`, `OK` (12 s step) | job log, `sacct` step `.0` |
+| A3. Fixture in the container | 10 rows read, 6 valid, 4 invalid; wall time 0:01.42; peak memory 60,476 KB | `/usr/bin/time -v` |
+| A3. `descriptors.tsv` / `descriptors.invalid.tsv` | `b5f1ff3b…e4b6` `OK`, `91f651e7…7292` `OK` | `sha256sum -c` |
+| B1. Environment rebuilt from `conda-linux-64.lock` | `module load mamba/latest` (mamba 2.9.0); 109 packages; "Environment created in 109 s"; Python 3.13.18, RDKit 2026.09.2 | job log |
+| B1. Download | `Total download: 0 B`: the packages were already in the package cache, so 109 s does not include downloading | mamba output |
+| B2. Tests in the rebuilt environment | `Ran 23 tests`, `OK` | job log |
+| B3. Fixture in the rebuilt environment | 10 rows read, 6 valid, 4 invalid; `b5f1ff3b…e4b6` `OK`, `91f651e7…7292` `OK` | `sha256sum -c` |
+
+The fixture output on Sol, both from the image and from the rebuilt conda
+environment, is byte-identical to the VM (aarch64) and GitHub Actions
+(x86_64) output. This covers the 10-row fixture only; ChEMBL data has not
+been run on Sol yet.
+
+### Step 3a: ChEMBL 37 download (2026-11-18)
+
+`bash slurm/sol/submit.sh fetch`, job 1993260, node `sc006`, 1 CPU,
+`--mem=1G` (from commit `38098d1`; `sbatch` noted that this is below Sol's
+2048 MB per CPU minimum and used it as given). Requested partition `htc`;
+`squeue` showed `public`.
+
+| Measure | Value | Source |
+|---|---|---|
+| State | COMPLETED, exit code 0:0 | `sacct` |
+| Wall time, whole job | 00:05:28 | `sacct` Elapsed |
+| Download step | 5:21.01 wall time, 0.71 s user + 1.13 s system CPU | `/usr/bin/time -v` |
+| Size | 292,540,141 bytes | `fetch_data.py` progress |
+| SHA-256 | `ea6181ce…f696e7`, `Checksum OK`; matches the checksum pinned in `scripts/fetch_data.py` | job log |
+| Peak memory, largest process | 27,716 KB | `/usr/bin/time -v` |
+| Peak memory, job step | 30,520 KB | `sacct` MaxRSS, step `.0` |
+
+The download speed depends on the network at that moment; the time is one
+measurement, not a benchmark. Peak memory was far below 1G, so the new 2G
+request in `config.sh` is only there to meet Sol's minimum.

@@ -18,7 +18,7 @@
 # Account, partition and QoS come from config.sh / config.local.sh via
 # submit.sh. The placeholder makes a direct `sbatch` of this file fail.
 #SBATCH --account=REPLACE_WITH_APPROVED_ACCOUNT
-#SBATCH --partition=htc
+#SBATCH --partition=public
 #SBATCH --export=NONE
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
