@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#
+# compute-descriptors - run the RDKit descriptor workload inside the
+# Apptainer image. Takes the same options as scripts/compute_descriptors.py:
+#   compute-descriptors --input FILE --output FILE [--chunk-size N --chunk-index K]
+#
+# Usually put on PATH by the Lmod module:
+#   module use /path/to/hpc-scientific-packaging/modules
+#   module load rdkit-descriptors
+#
+# Files must be in a folder the container can see. Apptainer mounts your
+# home folder, /tmp and the current folder by default. For other folders
+# (for example a scratch file system), list them in APPTAINER_BIND first:
+#   export APPTAINER_BIND=/scratch/$USER
+
+set -euo pipefail
+
+# The module sets RDKIT_DESCRIPTORS_SIF. Without the module, fall back to the
+# image in this repository (one folder up from bin/).
+SIF=${RDKIT_DESCRIPTORS_SIF:-$(cd "$(dirname "$0")/.." && pwd)/container/rdkit-descriptors.sif}
+
+if ! command -v apptainer >/dev/null 2>&1; then
+    echo "compute-descriptors: 'apptainer' not found on PATH" >&2
+    exit 1
+fi
+if [[ ! -f "$SIF" ]]; then
+    echo "compute-descriptors: image not found: $SIF" >&2
+    echo "Build it with: apptainer build container/rdkit-descriptors.sif container/tool.def" >&2
+    exit 1
+fi
+
+# --cleanenv: do not pass this shell's environment variables into the
+# container. The image's %runscript runs compute_descriptors.py with "$@".
+exec apptainer run --cleanenv "$SIF" "$@"

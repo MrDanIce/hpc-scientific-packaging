@@ -26,7 +26,7 @@ Dataset: ChEMBL 37 `chembl_37_chemreps.txt.gz` (2,897,819 molecules). The
 | Wall time | 00:00:20 | `sacct` Elapsed |
 | Wall time | 0:19.70 | `/usr/bin/time -v` |
 | CPU time | 00:20.128 | `sacct` TotalCPU |
-| Time inside the script | 18.0 s (rest is container start-up) | script summary |
+| Time inside the script | 18.0 s (the rest is container start-up plus loading Python and RDKit, not measured separately) | script summary |
 | Peak memory, job step | 110,208 KB | `sacct` MaxRSS, step `3.0` |
 | Peak memory, largest process | 68,764 KB | `/usr/bin/time -v` "Maximum resident set size" |
 | Rows | 10,000 valid, 0 invalid | script summary |
