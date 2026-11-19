@@ -30,6 +30,7 @@ From: mambaorg/micromamba@sha256:c3897a06f87c1c13f038188b3665a8c4162da62eac5109a
     conda-linux-64.lock /opt/app/locks/conda-linux-64.lock
     conda-linux-aarch64.lock /opt/app/locks/conda-linux-aarch64.lock
     scripts/compute_descriptors.py /opt/app/scripts/compute_descriptors.py
+    scripts/merge_results.py /opt/app/scripts/merge_results.py
     tests /opt/app/tests
 
 %post
