@@ -14,14 +14,15 @@ release 37.
 > aarch64, 4 CPUs, 7.9 GB memory, on a MacBook). That is one machine acting
 > as both controller and compute node. **It is a test setup, not a
 > production HPC cluster.** The container build and smoke test also run on
-> GitHub Actions (x86_64). Nothing has been run on a real multi-node cluster
-> yet.
+> GitHub Actions (x86_64). The workload was then rerun on the **ASU Sol
+> supercomputer** with the x86_64 image, including the full dataset; each Sol
+> job ran on a single node.
 
 | Environment | What ran there |
 |---|---|
 | VM (single-node Slurm) | Everything: environment, tests, container, Slurm jobs, module |
 | GitHub Actions (ubuntu-24.04, x86_64) | Container build, unit tests inside the image, smoke test on the test fixture |
-| ASU Sol supercomputer | Image copied and checked; fixture job (container and rebuilt conda environment) passed. ChEMBL runs not done yet. See `docs/RESULTS.md` |
+| ASU Sol supercomputer | Image copied and checked; fixture job (container and rebuilt conda environment); one task on 200,000 molecules (byte-identical to the VM); full ChEMBL 37 run (2,897,819 molecules) as an 8-task job array + merge. See `docs/RESULTS.md` |
 
 ## What is in this repository
 

@@ -44,20 +44,20 @@ TOTAL_MOLECULES=2897819   # data rows in chembl_37_chemreps.txt.gz (counted on t
 #   MaxWall 1-00:00:00, MaxJobsPU 2 (running at once), MaxSubmitPU 10 (in the queue).
 # Each array task counts as one job, so a full run must be at most
 # MAX_SUBMIT_JOBS jobs including the merge: 8 chunks + 1 merge = 9.
-CHUNK_SIZE=400000         # molecules per array task in the full run (8 chunks); to be confirmed from step 3b
+CHUNK_SIZE=400000         # molecules per array task in the full run (8 chunks); kept after step 3b (docs/RESULTS.md)
 TEST_CHUNK_SIZE=200000    # step 3b: one task over rows 0-199,999, comparable with the VM result
 MAX_PARALLEL=2            # array tasks running at the same time (%N); QoS allows 2
 MAX_SUBMIT_JOBS=10        # QoS MaxSubmitPU
 
 # ---------------------------------------------------------------- requests
-# Starting values. ARRAY_* and MERGE_* are to be replaced with values based
-# on the sacct numbers from the one-task test (step 3). Every request must
+# ARRAY_* checked against the one-task test (job 1999573: 200,000 rows,
+# 7 min, 324,880 KB); see docs/RESULTS.md. Every request must
 # stay under the 4-hour limit.
 FIXTURE_CPUS=2;  FIXTURE_MEM=4G;  FIXTURE_TIME=00:45:00
 FETCH_CPUS=1;    FETCH_MEM=2G;    FETCH_TIME=00:30:00   # Sol minimum is 2048 MB per CPU
 ARRAY_CPUS=1;    ARRAY_MEM=2G;    ARRAY_TIME=01:00:00
-# Merge of all 2.9 million rows has not been measured. The VM merge of
-# 200,000 rows peaked at 189,376 KB; scaled by 14.5x that is about 2.7 GB.
+# Merge of all 2.9 million rows on Sol (job 2001881): 2,566,960 KB peak,
+# 20 s (docs/RESULTS.md).
 MERGE_CPUS=1;    MERGE_MEM=8G;    MERGE_TIME=00:30:00
 
 # ---------------------------------------------------------------- local overrides

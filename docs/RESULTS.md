@@ -225,3 +225,94 @@ been run on Sol yet.
 The download speed depends on the network at that moment; the time is one
 measurement, not a benchmark. Peak memory was far below 1G, so the new 2G
 request in `config.sh` is only there to meet Sol's minimum.
+
+### Step 3b: one array task over the first 200,000 molecules (2026-11-19)
+
+`bash slurm/sol/submit.sh one-task` (commit `d142691`), array job 1999573,
+task 0 (`--array=0%1`, `CHUNK_SIZE=200000`), node `sc006`, 1 CPU, `--mem=2G`,
+`--time=01:00:00`, inside the image.
+
+| Measure | Value | Source |
+|---|---|---|
+| State | COMPLETED, exit code 0:0 | `sacct` |
+| Wall time, task | 00:07:08 | `sacct` Elapsed |
+| Wall time, workload step | 7:02.01 (00:07:03 in `sacct`); script timer 417.4 s | `/usr/bin/time -v`, script summary |
+| CPU time | 06:54.033 (374.25 s user + 39.56 s system, 98% of one CPU) | `sacct` TotalCPU, `/usr/bin/time -v` |
+| Peak memory, job step | 324,880 KB | `sacct` MaxRSS, step `.0` |
+| Peak memory, largest process | 264,944 KB | `/usr/bin/time -v` |
+| Rows | 200,000 read: 199,997 valid, 3 invalid | script summary |
+| SHA-256 `chunk_0000.tsv` | `5c792afc47a67acdb5d4f1c499f7f940cd883cd565d0df626cfeaefec8b3971f` | `sha256sum` |
+| SHA-256 `chunk_0000.invalid.tsv` | `91bcb991bcd95ee91306448513c5bee4e96431a75529da1be102cf4f922a520b` | `sha256sum` |
+
+Both checksums are identical to the VM output for the same 200,000 rows
+(VM jobs 6, 7 and 34 above): the x86_64 image on Sol and the aarch64 image
+on the VM give byte-identical results on real data, not only on the fixture.
+
+For comparison only (different machines, one run each): the same rows as
+one job on the VM (job 34) took 5:20.32 and peaked at 263,276 KB (largest
+process). The cause of the time difference was not measured.
+
+### Requests for the full run, from step 3b
+
+| Setting | Value | Reason |
+|---|---|---|
+| `CHUNK_SIZE` | 400,000 (8 tasks: 7 × 400,000 + 1 × 97,819) | 8 tasks + 1 merge = 9 jobs, under QoS MaxSubmitPU 10 |
+| `ARRAY_CPUS` | 1 | 98% of one CPU used |
+| `ARRAY_MEM` | 2G | Memory grows with chunk size (one 200,000-row chunk: 324,880 KB job step), so 400,000 rows is expected near 650 MB; 2G is about 3× that and is also Sol's 2048 MB per CPU minimum |
+| `ARRAY_TIME` | 01:00:00 | 200,000 rows took about 7 minutes, so 400,000 is expected near 15 minutes, plus time to skip further into the compressed file for later chunks; 1 hour is about 4× |
+| `MAX_PARALLEL` | 2 | QoS MaxJobsPU 2 |
+
+These are estimates from one task; the full run is the check.
+
+### Step 4: full ChEMBL 37 run, job array + merge (2026-11-19)
+
+`bash slurm/sol/submit.sh full`: array job 2001853 (`--array=0-7%2`, 8 tasks,
+`CHUNK_SIZE=400000`, 1 CPU, `--mem=2G`, `--time=01:00:00` each, inside the
+image) and merge job 2001881 (`--dependency=afterok:2001853
+--kill-on-invalid-dep=yes`, 1 CPU, `--mem=8G`, `--time=00:30:00`). Partition
+`public`, nodes `sc006` and `sc007`. Each job ran on one node.
+
+All 8 tasks and the merge: COMPLETED, exit code 0:0.
+
+| Task | Rows | Valid | Invalid | Wall time (`sacct`) | CPU time (`sacct`) | Peak memory, job step (`sacct` MaxRSS) | Node |
+|---|---|---|---|---|---|---|---|
+| 0 | 400,000 | 399,997 | 3 | 00:14:51 | 14:32.900 | 520,532 KB | sc006 |
+| 1 | 400,000 | 400,000 | 0 | 00:18:52 | 18:33.952 | 521,652 KB | sc006 |
+| 2 | 400,000 | 399,996 | 4 | 00:14:27 | 14:13.192 | 518,340 KB | sc007 |
+| 3 | 400,000 | 399,997 | 3 | 00:15:16 | 15:02.924 | 520,236 KB | sc006 |
+| 4 | 400,000 | 399,999 | 1 | 00:15:42 | 15:15.170 | 520,304 KB | sc006 |
+| 5 | 400,000 | 400,000 | 0 | 00:14:49 | 14:33.151 | 520,968 KB | sc006 |
+| 6 | 400,000 | 399,999 | 1 | 00:15:01 | 14:47.992 | 520,312 KB | sc007 |
+| 7 | 97,819 | 97,816 | 3 | 00:03:57 | 03:50.698 | 209,360 KB | sc006 |
+| **Total** | **2,897,819** | **2,897,804** | **15** | 6,775 s summed | 6,650.0 s summed | | |
+
+Row counts are from the task logs (`grep "rows read"`); the logs were read
+in file-name order, task 0 to 7.
+
+| Measure | Value | Source |
+|---|---|---|
+| First task start → last task end | 00:19:45 → 01:19:47 = **1:00:02** (2 tasks at once) | `sacct` Start/End |
+| Merge start | 01:19:47, the same second the last task ended | `sacct` Start |
+| First task start → merged file | 00:19:45 → 01:20:07 = **1:00:22** (queue time before the first task not included) | `sacct` Start/End |
+| Merge wall time | 0:13.58 (job 00:00:20) | `/usr/bin/time -v`, `sacct` |
+| Merge peak memory | 2,566,960 KB job step; 2,539,580 KB largest process | `sacct` MaxRSS, `/usr/bin/time -v` |
+| `descriptors.tsv` | 389,083,107 bytes, 2,897,805 lines (2,897,804 rows + header) | `ls -l`, `wc -l` |
+| `descriptors.invalid.tsv` | 2,229 bytes, 16 lines (15 rows + header) | `ls -l`, `wc -l` |
+| SHA-256 `descriptors.tsv` | `ee791e241e3f4ae0aa6c29169f0fb57152b9843bc7065d7f03fd92b82db3a611` | merge log |
+| SHA-256 `descriptors.invalid.tsv` | `f67c0e4a37e859890a5768391c5965f513953ec3744da56ef514f7f48c3f5b4d` | merge log |
+
+Checks:
+
+- Rows read add up to 2,897,819, the number of data rows in the file
+  (`TOTAL_MOLECULES` in `config.sh`, counted on the VM). Valid + invalid =
+  2,897,804 + 15 = 2,897,819.
+- Task 0 covers rows 0–399,999 and has 3 invalid rows, the same 3 found in
+  rows 0–199,999 in step 3b and on the VM.
+- Requests against use: array tasks peaked at 521,652 KB (about 25% of 2G)
+  and the slowest took 18:52 (31% of 1 hour). The merge used 2.5 GB (31% of
+  8G) and 20 s of 30 minutes. The estimates from step 3b (about 650 MB,
+  about 15 minutes) were close for time and high for memory. Task 1 was
+  about 4 minutes slower than the others; why was not checked.
+- The full dataset has not been run on the VM or on GitHub Actions, so these
+  checksums have nothing to be compared with yet. They are the result of one
+  run on ASU Sol.

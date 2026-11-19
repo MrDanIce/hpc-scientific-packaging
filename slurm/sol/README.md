@@ -3,7 +3,7 @@
 Scripts for rerunning the workload on the ASU Sol supercomputer, using the
 x86_64 image built by GitHub Actions (images are not built on Sol).
 
-**Status:** steps 1 (image) and 2 (fixture) done on Sol on 2026-11-18; steps 3a–4 not run yet. The scripts were rehearsed on the
+**Status:** all steps (1–4) done on Sol on 2026-11-18 and 2026-11-19; results in `docs/RESULTS.md`. The scripts were rehearsed on the
 VM (single-node Slurm) with a local override of the settings; that checked
 the scripts, not Sol. Sol results go in the "ASU Sol" section of
 `docs/RESULTS.md` only after they have really been produced there.
